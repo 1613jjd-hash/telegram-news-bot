@@ -20,6 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install telethon requests
+
       - name: Run script
         env:
           API_ID: ${{ secrets.API_ID }}
@@ -28,4 +29,6 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # ▼ 이 부분이 새로 추가되었습니다! 이 줄이 있어야 코드가 방 ID를 알 수 있어요.
+          SOURCE_CHANNEL_ID: ${{ secrets.SOURCE_CHANNEL_ID }}
         run: python main.py
