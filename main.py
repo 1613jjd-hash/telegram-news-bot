@@ -1,32 +1,28 @@
-name: Daily Crypto Briefing
+import os
+import asyncio
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+import google.generativeai as genai
 
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+# GitHub Secrets에서 정보 가져오기
+API_ID = int(os.environ.get("API_ID"))
+API_HASH = os.environ.get("API_HASH")
+SESSION_STRING = os.environ.get("SESSION_STRING")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHAT_ID = int(os.environ.get("CHAT_ID"))
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+async def main():
+    try:
+        prompt = "오늘의 주요 뉴스 3가지를 요약해줘."
+        response = model.generate_content(prompt)
+        async with TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH) as client:
+            await client.send_message(CHAT_ID, response.text)
+    except Exception as e:
+        print(f"Error: {e}")
 
-      - name: Install dependencies
-        run: |
-          pip install telethon google-generativeai
-
-      - name: Run script
-        env:
-          API_ID: ${{ secrets.API_ID }}
-          API_HASH: ${{ secrets.API_HASH }}
-          SESSION_STRING: ${{ secrets.SESSION_STRING }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python main.py
+if __name__ == "__main__":
+    asyncio.run(main())
