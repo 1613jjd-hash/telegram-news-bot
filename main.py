@@ -1,8 +1,9 @@
 import os
 import asyncio
+import requests # 직접 요청을 보내는 도구
+import json
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from google import genai
 
 # Secrets 데이터 가져오기
 API_ID = int(os.environ.get("API_ID"))
@@ -11,35 +12,40 @@ SESSION_STRING = os.environ.get("SESSION_STRING")
 CHAT_ID = int(os.environ.get("CHAT_ID"))
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# 클라이언트 설정
-client_gemini = genai.Client(api_key=GEMINI_API_KEY)
-
 async def main():
-    print("뉴스 분석 시작 (호환성 모드)...")
-    try:
-        # 모델명을 'models/gemini-1.5-flash' 전체 경로로 입력해봅니다.
-        response = client_gemini.models.generate_content(
-            model='gemini-1.5-flash', 
-            contents="오늘의 뉴스 요약을 한국어로 짧게 부탁해."
-        )
-        
-        report_text = response.text
-        print(f"AI 분석 완료!")
+    print("뉴스 분석 시작 (Direct API 방식)...")
+    
+    # 1. AI에게 질문하기 (라이브러리 없이 직접 주소로 요청)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "contents": [{
+            "parts": [{"text": "오늘의 주요 뉴스 3가지를 한국어로 간단히 요약해줘."}]
+        }]
+    }
 
-        # 텔레그램 전송
-        async with TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH) as client_tg:
-            await client_tg.send_message(CHAT_ID, report_text)
-            print("★ 텔레그램 메시지 전송 성공!")
+    try:
+        # 우편 보내듯 데이터 전송
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+        
+        if response.status_code == 200:
+            # 성공하면 답장 뜯어보기
+            result = response.json()
+            report_text = result['candidates'][0]['content']['parts'][0]['text']
+            print("AI 답변 도착 완료!")
+        else:
+            # 실패하면 에러 내용 확인
+            report_text = f"AI 연결 실패 (코드 {response.status_code}): {response.text}"
+            print(report_text)
+
+        # 2. 텔레그램 전송 (이건 이미 성공했음!)
+        async with TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH) as client:
+            await client.send_message(CHAT_ID, report_text)
+            print("★ 텔레그램 전송 완료!")
 
     except Exception as e:
-        # 에러가 나면 텔레그램으로 에러 내용이라도 보내서 연결 확인
-        print(f"에러 발생: {e}")
-        try:
-            async with TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH) as client_tg:
-                await client_tg.send_message(CHAT_ID, f"AI 분석 중 에러가 발생했어요: {e}")
-                print("에러 메시지를 텔레그램으로 보냈습니다.")
-        except:
-            print("텔레그램 전송마저 실패했습니다. 세션이나 ID를 확인하세요.")
+        print(f"오류 발생: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
