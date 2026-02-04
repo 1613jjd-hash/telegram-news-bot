@@ -19,8 +19,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install telethon google-generativeai
-
+          pip uninstall -y google-generativeai google-api-core
+          pip install telethon google-genai
       - name: Run script
         env:
           API_ID: ${{ secrets.API_ID }}
