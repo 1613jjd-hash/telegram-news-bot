@@ -1,9 +1,9 @@
 name: Daily Crypto Briefing
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # 매일 아침 9시(한국시간) 자동 실행
-  workflow_dispatch:      # 수동 실행 버튼 활성화
+    - cron: '0 0 * * *'
 
 jobs:
   build:
